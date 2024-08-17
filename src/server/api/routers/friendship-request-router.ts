@@ -79,14 +79,41 @@ export const friendshipRequestRouter = router({
        * scenario for Question 3
        *  - Run `yarn test` to verify your answer
        */
-      return ctx.db
-        .insertInto('friendships')
-        .values({
-          userId: ctx.session.userId,
-          friendUserId: input.friendUserId,
-          status: FriendshipStatusSchema.Values['requested'],
-        })
-        .execute()
+      // Kiểm tra xem đã tồn tại một yêu cầu kết bạn với trạng thái 'declined' chưa
+      const existingFriendship = await ctx.db
+        .selectFrom('friendships')
+        .where('userId', '=', ctx.session.userId)
+        .where('friendUserId', '=', input.friendUserId)
+        .select('status')
+        .executeTakeFirst();
+
+      if (existingFriendship) {
+        if (existingFriendship.status === 'declined') {
+          // Nếu yêu cầu kết bạn đã bị từ chối, cập nhật lại trạng thái thành 'requested'
+          await ctx.db
+            .updateTable('friendships')
+            .set({ status: 'requested' })
+            .where('userId', '=', ctx.session.userId)
+            .where('friendUserId', '=', input.friendUserId)
+            .execute();
+        } else {
+          // Nếu yêu cầu kết bạn đã tồn tại nhưng không bị từ chối (trong trường hợp khác).
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Friendship request is already in progress or accepted.',
+          });
+        }
+      }
+      else {
+        return ctx.db
+          .insertInto('friendships')
+          .values({
+            userId: ctx.session.userId,
+            friendUserId: input.friendUserId,
+            status: FriendshipStatusSchema.Values['requested'],
+          })
+          .execute()
+      }
     }),
 
   accept: procedure
@@ -117,6 +144,43 @@ export const friendshipRequestRouter = router({
          *  - https://kysely-org.github.io/kysely/classes/Kysely.html#insertInto
          *  - https://kysely-org.github.io/kysely/classes/Kysely.html#updateTable
          */
+
+        //A--  accept  ---> B ( userId-b, friendId-a, accepted), b accepted
+        //A--- request----> B  (userId-a, friendId-b, accepted)
+
+
+        await t
+          .updateTable('friendships')
+          .set({ status: 'accepted' })
+          .where('userId', '=', input.friendUserId)
+          .where('friendUserId', '=', ctx.session.userId)
+          .execute();
+        // Kiểm tra nếu User A cũng đã gửi yêu cầu kết bạn cho User B
+        const existingFriendship = await t
+          .selectFrom('friendships')
+          .where('userId', '=', ctx.session.userId)
+          .where('friendUserId', '=', input.friendUserId)
+          .select('id')
+          .executeTakeFirst();
+        if (existingFriendship) {
+          // Nếu tồn tại, cập nhật nó thành 'accepted'
+          await t
+            .updateTable('friendships')
+            .set({ status: 'accepted' })
+            .where('userId', '=', ctx.session.userId)
+            .where('friendUserId', '=', input.friendUserId)
+            .execute();
+        } else {
+          // Nếu không, tạo bản ghi mới với trạng thái 'accepted'
+          await t
+            .insertInto('friendships')
+            .values({
+              userId: ctx.session.userId,
+              friendUserId: input.friendUserId,
+              status: 'accepted',
+            })
+            .execute();
+        }
       })
     }),
 
@@ -137,5 +201,11 @@ export const friendshipRequestRouter = router({
        * Documentation references:
        *  - https://vitest.dev/api/#test-skip
        */
+      return ctx.db
+        .updateTable('friendships')
+        .set({ status: 'declined' })
+        .where('userId', '=', input.friendUserId)
+        .where('friendUserId', '=', ctx.session.userId)
+        .execute();
     }),
 })

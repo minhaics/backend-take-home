@@ -9,6 +9,7 @@ import { myFriendRouter } from './routers/my-friend-router'
  *
  * All routers added in /api/routers should be manually added here.
  */
+
 export const appRouter = router({
   friendshipRequest: friendshipRequestRouter,
   myFriend: myFriendRouter,
