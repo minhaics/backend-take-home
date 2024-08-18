@@ -78,59 +78,6 @@ export const myFriendRouter = router({
 });
 
 
-//cach: 2
-// export const myFriendRouter = router({
-//   getById: protectedProcedure
-//     .input(
-//       z.object({
-//         friendUserId: IdSchema,
-//       })
-//     )
-//     .mutation(async ({ ctx, input }) => {
-//       // Truy vấn chính với subquery để tính mutualFriendCount
-//       return ctx.db
-//         .selectFrom('users as friends')
-//         .innerJoin('friendships', 'friendships.friendUserId', 'friends.id')
-//         .innerJoin(
-//           userTotalFriendCount(ctx.db).as('userTotalFriendCount'),
-//           'userTotalFriendCount.userId',
-//           'friends.id'
-//         )
-//         .where('friendships.userId', '=', ctx.session.userId)
-//         .where('friendships.friendUserId', '=', input.friendUserId)
-//         .where('friendships.status', '=', FriendshipStatusSchema.Values['accepted'])
-//         .select([
-//           'friends.id',
-//           'friends.fullName',
-//           'friends.phoneNumber',
-//           'totalFriendCount',
-//           // Truy vấn con để tính mutualFriendCount
-//           ctx.db
-//             .selectFrom('friendships as f1')
-//             .innerJoin('friendships as f2', 'f1.friendUserId', 'f2.friendUserId')
-//             .where('f1.userId', '=', ctx.session.userId)
-//             .where('f2.userId', '=', input.friendUserId)
-//             .where('f1.status', '=', FriendshipStatusSchema.Values['accepted'])
-//             .where('f2.status', '=', FriendshipStatusSchema.Values['accepted'])
-//             .select((eb) =>
-//                       eb.fn.count('f1.friendUserId').as('mutualFriendCount')
-//                     )
-//             .as('mutualFriendCount')
-//         ])
-//         .executeTakeFirstOrThrow(() => new TRPCError({ code: 'NOT_FOUND' }))
-//         .then(
-//           z.object({
-//             id: IdSchema,
-//             fullName: NonEmptyStringSchema,
-//             phoneNumber: NonEmptyStringSchema,
-//             totalFriendCount: CountSchema,
-//             mutualFriendCount: CountSchema,
-//           }).parse
-//         );
-//     }),
-// });
-
-
 const userTotalFriendCount = (db: Database) => {
   return db
     .selectFrom('friendships')
