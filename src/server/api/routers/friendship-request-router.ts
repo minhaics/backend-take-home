@@ -148,7 +148,6 @@ export const friendshipRequestRouter = router({
         //A--  accept  ---> B ( userId-b, friendId-a, accepted), b accepted
         //A--- request----> B  (userId-a, friendId-b, accepted)
 
-
         await t
           .updateTable('friendships')
           .set({ status: 'accepted' })
